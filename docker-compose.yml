@@ -44,8 +44,6 @@ services:
       --sentry.api.addr=sentry:9091 --downloader.api.addr=downloader:9093 --txpool.disable
       --metrics --metrics.addr=0.0.0.0 --metrics.port=6060 --pprof --pprof.addr=0.0.0.0 --pprof.port=6061
       --authrpc.addr=0.0.0.0 --authrpc.port=8551 --authrpc.jwtsecret=/home/erigon/.local/share/erigon/jwt.hex --datadir=/home/erigon/.local/share/erigon
-    environment:
-      - JWT_SECRET=01c5d90b7829effd8ebd4332f49bbce9e8f2250accb11cf0c38efb63fb5d7911
     ports: [ "8551:8551" ]
     volumes:
       # It's ok to mount sub-dirs of "datadir" to different drives
@@ -93,18 +91,16 @@ services:
     image: sigp/lighthouse
     user: ${DOCKER_UID:-1000}:${DOCKER_GID:-1000}
     stop_grace_period: 1m
-    environment:
-      - JWT_SECRET=01c5d90b7829effd8ebd4332f49bbce9e8f2250accb11cf0c38efb63fb5d7911
     command: |
       lighthouse beacon_node --disable-upnp 
       --datadir /var/lib/lighthouse --http --http-address 0.0.0.0 --http-port 5052 
       --network mainnet --port 9000 --target-peers 80 --execution-endpoint http://erigon:8551
-      --execution-jwt /var/lib/lighthouse/beacon/ee-secret/jwt.hex --debug-level=info 
+      --execution-jwt /home/erigon/.local/share/erigon/jwt.hex --debug-level=info 
       --metrics --metrics-address 0.0.0.0 --metrics-port 6060 --validator-monitor-auto
     volumes:
       - ${XDG_DATA_HOME:-~/.local/share}/lhconsensus-data:/var/lib/lighthouse
       - /etc/localtime:/etc/localtime:ro
-      - ${XDG_DATA_HOME:-~/.local/share}/erigon:/var/lib/lighthouse/beacon/ee-secret
+      - ${XDG_DATA_HOME:-~/.local/share}/erigon:/home/erigon/.local/share/erigon
     networks:
       - eth_network
   prometheus:
