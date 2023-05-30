@@ -90,7 +90,7 @@ services:
       lighthouse beacon_node --disable-upnp 
       --datadir /var/lib/lighthouse --http --http-address 0.0.0.0 --http-port 5052 
       --network mainnet --port 9000 --target-peers 80 --execution-endpoint http://erigon:8551
-      --execution-jwt /home/erigon/.local/share/erigon/jwt.hex --debug-level=info 
+      --execution-jwt-secret-key 01c5d90b7829effd8ebd4332f49bbce9e8f2250accb11cf0c38efb63fb5d7911 --debug-level info 
       --metrics --metrics-address 0.0.0.0 --metrics-port 6060 --validator-monitor-auto
     volumes:
       - ${XDG_DATA_HOME:-~/.local/share}/lhconsensus-data:/var/lib/lighthouse
