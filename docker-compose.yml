@@ -43,7 +43,8 @@ services:
       ${ERIGON_FLAGS-} --private.api.addr=0.0.0.0:9090
       --sentry.api.addr=sentry:9091 --downloader.api.addr=downloader:9093 --txpool.disable
       --metrics --metrics.addr=0.0.0.0 --metrics.port=6060 --pprof --pprof.addr=0.0.0.0 --pprof.port=6061
-      --authrpc.jwtsecret=/home/erigon/.local/share/erigon/jwt.hex --datadir=/home/erigon/.local/share/erigon
+      --authrpc.addr=0.0.0.0 --authrpc.port=8551 --authrpc.jwtsecret=/home/erigon/.local/share/erigon/jwt.hex --datadir=/home/erigon/.local/share/erigon
+    ports: [ "8551:8551" ]
     volumes:
       # It's ok to mount sub-dirs of "datadir" to different drives
       - ${XDG_DATA_HOME:-~/.local/share}/erigon:/home/erigon/.local/share/erigon
