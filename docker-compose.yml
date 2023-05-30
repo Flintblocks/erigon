@@ -33,7 +33,7 @@ x-logging:
 
 services:
   erigon:
-    <<: *default-erigon-service
+    image: thorax/erigon:${TAG:-latest}
     command: |
       ${ERIGON_FLAGS-} --private.api.addr=0.0.0.0:9090
       --sentry.api.addr=sentry:9091 --downloader.api.addr=downloader:9093 --txpool.disable
