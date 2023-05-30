@@ -14,13 +14,22 @@
 version: '2.2'
 
 # Basic erigon's service
-x-erigon-service: &default-erigon-service
+x-erigon-service:
+  &default-erigon-service
   image: thorax/erigon:${TAG:-latest}
   pid: service:erigon # Use erigon's PID namespace. It's required to open Erigon's DB from another process (RPCDaemon local-mode)
   volumes_from: [ erigon ]
   restart: unless-stopped
   mem_swappiness: 0
   user: ${DOCKER_UID:-1000}:${DOCKER_GID:-1000}
+x-logging:
+  &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100m
+      max-file: "3"
+      tag: '{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}'
 
 services:
   erigon:
@@ -50,7 +59,7 @@ services:
 
   downloader:
     <<: *default-erigon-service
-    entrypoint: downloader 
+    entrypoint: downloader
     command: ${DOWNLOADER_FLAGS-} --downloader.api.addr=0.0.0.0:9093 --datadir=/home/erigon/.local/share/erigon
     ports: [ "42069:42069/tcp", "42069:42069/udp" ]
 
@@ -66,10 +75,57 @@ services:
       ${RPCDAEMON_FLAGS-} --http.addr=0.0.0.0 --http.vhosts=* --http.corsdomain=* --ws
       --private.api.addr=erigon:9090 --txpool.api.addr=txpool:9094 --datadir=/home/erigon/.local/share/erigon
     ports: [ "8545:8545" ]
-
-
-
-
+  lighthouse:
+    restart: "unless-stopped"
+    pid: service:erigon
+    image: sigp/lighthouse
+    user: ${DOCKER_UID:-1000}:${DOCKER_GID:-1000}
+    stop_grace_period: 1m
+    volumes:
+      - ${XDG_DATA_HOME:-~/.local/share}/lhconsensus-data:/var/lib/lighthouse
+      - /etc/localtime:/etc/localtime:ro
+      - ${XDG_DATA_HOME:-~/.local/share}/erigon:/var/lib/lighthouse/beacon/ee-secret
+    <<: *logging
+    entrypoint:
+      - docker-entrypoint.sh
+      - lighthouse
+      - bn
+      - --disable-upnp
+      - --datadir
+      - /var/lib/lighthouse
+      - --http
+      - --http-address
+      - 0.0.0.0
+      - --http-port
+      - 5052
+      - --network
+      - mainnet
+      - --port
+      - 9000
+      - --target-peers
+      - ${CL_MAX_PEER_COUNT:-80}
+      - --execution-endpoint
+      - erigon:8551
+      - --execution-jwt
+      - /var/lib/lighthouse/beacon/ee-secret/jwt.hex
+      - --debug-level=4
+      - --metrics
+      - --metrics-address
+      - 0.0.0.0
+      - --metrics-port
+      - "6060"
+      - --validator-monitor-auto
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${CL_HOST:-cl}.service=${CL_HOST:-cl}
+      - traefik.http.routers.${CL_HOST:-cl}.entrypoints=websecure
+      - traefik.http.routers.${CL_HOST:-cl}.rule=Host(`${CL_HOST:-cl}.${DOMAIN}`)
+      - traefik.http.routers.${CL_HOST:-cl}.tls.certresolver=letsencrypt
+      - traefik.http.routers.${CL_HOST:-cl}lb.service=${CL_HOST:-cl}
+      - traefik.http.routers.${CL_HOST:-cl}lb.entrypoints=websecure
+      - traefik.http.routers.${CL_HOST:-cl}lb.rule=Host(`${CL_LB:-cl-lb}.${DOMAIN}`)
+      - traefik.http.routers.${CL_HOST:-cl}lb.tls.certresolver=letsencrypt
+      - traefik.http.services.${CL_HOST:-cl}.loadbalancer.server.port=${CL_REST_PORT:-5052}
   prometheus:
     image: prom/prometheus:v2.43.0
     user: ${DOCKER_UID:-1000}:${DOCKER_GID:-1000} # Uses erigon user from Dockerfile
@@ -90,4 +146,3 @@ services:
       - ./cmd/prometheus/dashboards:/etc/grafana/provisioning/dashboards
       - ${XDG_DATA_HOME:-~/.local/share}/erigon-grafana:/var/lib/grafana
     restart: unless-stopped
-
